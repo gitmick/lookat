@@ -418,3 +418,5 @@ file as personal data rather than as a hash.
 The MediaPipe face landmark model is downloaded at setup time from Google's
 model store (Apache 2.0). The Haar cascades, if the fallback is used, come from
 the OpenCV repository (BSD).
+
+# (update mechanism test)
