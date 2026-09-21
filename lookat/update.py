@@ -17,7 +17,7 @@ AUTH_MARKERS = ("could not read Username", "Authentication failed", "Permission 
                 "publickey", "terminal prompts disabled", "403")
 
 AUTH_HELP = (
-    "\nThe repository is private, so this machine needs access to it. Either:"
+    "\nThis machine needs access to the repository. Either:"
     "\n  gh auth login                      (then: gh auth setup-git)"
     "\nor switch the remote to SSH and add a key to your GitHub account:"
     "\n  git remote set-url origin git@github.com:gitmick/lookat.git"

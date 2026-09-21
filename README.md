@@ -88,14 +88,9 @@ lookat --update           # pull it and reinstall
 or press **m** and choose **Update**. It checks in the background at startup
 and shows what it found in the menu.
 
-The repository is private, so the Mac needs access to it. Easiest:
-
-```bash
-gh auth login && gh auth setup-git
-```
-
-or use SSH: `git remote set-url origin git@github.com:gitmick/lookat.git` and
-add that Mac's public key to the GitHub account.
+The repository is public, so cloning and updating need no credentials. (If
+you ever make it private again, run `gh auth login && gh auth setup-git` on
+that Mac, or switch the remote to SSH.)
 
 Updates can never clobber local work: your config, calibration, pictures and
 enrolled faces all live **outside** the checkout (see `lookat --version`), and
