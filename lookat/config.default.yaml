@@ -1,0 +1,123 @@
+# lookat -- configuration
+# Every value here can be overridden on the command line:
+#   python run.py --set gaze.yaw_tolerance_deg=30 --set display.fullscreen=false
+
+camera:
+  backend: auto          # auto | opencv | picamera2
+  device: null           # null = pick one automatically. Or an index, or a
+                         # video file / URL. Change it from the menu (m).
+  width: 640
+  height: 480
+  fps: 30
+  flip_horizontal: true  # mirror the preview (does not affect detection logic)
+  rotate: 0              # 0 | 90 | 180 | 270
+
+detector:
+  backend: auto          # auto | mediapipe | haar
+  model_path: models/face_landmarker.task
+  auto_download_model: true
+  detection_fps: 12      # detector rate; the display always runs at display.fps
+  min_confidence: 0.5
+
+gaze:
+  # Half-angles of the cone that counts as "looking at this screen".
+  # Bigger = more permissive. Tune with:  python run.py --calibrate
+  yaw_tolerance_deg: 22
+  pitch_tolerance_deg: 18
+  softness_deg: 8          # falloff band beyond the tolerance (score 1 -> 0)
+
+  use_eye_offset: true     # add iris deflection on top of head pose
+  eye_gain_yaw_deg: 30     # degrees added at full horizontal iris deflection
+  eye_gain_pitch_deg: 15   # vertical iris is noisy -> smaller gain
+
+  compensate_position: true  # correct for the viewer standing off to the side
+  horizontal_fov_deg: 60     # your camera's horizontal field of view
+
+  # Where the screen sits relative to the camera, in degrees.
+  # Camera above the screen -> people look slightly down -> pitch_offset ~ -8.
+  yaw_offset_deg: 0
+  pitch_offset_deg: 0
+
+  require_eyes_open: true
+  blink_threshold: 0.6     # mediapipe eyeBlink blendshape
+  ear_threshold: 0.15      # fallback eye-aspect-ratio
+  min_face_width_ratio: 0.05   # ignore faces smaller than this fraction of the frame
+
+identity:
+  # Tell specific people apart, using OpenCV's built-in SFace recogniser.
+  #   python run.py --enroll alice          (10s from the webcam)
+  #   python run.py --enroll bob --from photos/bob*.jpg
+  #   python run.py --people / --forget bob
+  enabled: true
+  model_path: models/face_recognition_sface.onnx
+  auto_download_model: true
+  database: people.json
+  threshold: 0.40        # cosine similarity; SFace's own reference is 0.363
+  margin: 0.10           # the winner must beat the runner-up by this much
+  min_face_ratio: 0.08   # do not try to recognise tiny faces
+  recognize_every: 3     # detector frames between recognitions (cost control)
+  vote_frames: 5         # majority vote over this many recognitions
+  min_votes: 2
+
+attention:
+  enter_score: 0.60        # score needed to switch to "looking"
+  exit_score: 0.40         # score below which we switch back (hysteresis)
+  enter_frames: 3          # consecutive detector frames required
+  exit_frames: 6
+  min_state_seconds: 0.8   # never flip faster than this
+  lost_face_grace_seconds: 0.7   # keep state briefly if the face vanishes
+  smoothing: 0.35          # EMA factor, 0..1 (higher = snappier, noisier)
+
+display:
+  backend: pygame          # pygame | none
+  fullscreen: true
+  window_size: [1280, 720]
+  hide_cursor: true
+  fps: 30
+  fade_seconds: 0.35
+  debug_overlay: false     # toggle at runtime with "d"
+  font_path: null          # e.g. /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
+
+  scenes:
+    idle:
+      background: "#0d1117"
+      text: "…"
+      subtext: "nobody is watching"
+      text_color: "#3d4551"
+      subtext_color: "#272d36"
+      image: null            # path to an image, shown behind the text
+      image_fit: cover       # cover | contain
+      font_scale: 0.22       # fraction of screen height
+      subtext_scale: 0.05
+    # Optional per-person scenes, used when identity.enabled is on.
+    # Anything left out is inherited from `attentive` below.
+    # Filled in automatically when you learn somebody from the menu (m).
+    # The key must match the name you enrolled. Anything you leave out is
+    # inherited from the `attentive` scene below.
+    person: {}
+    #  anna:
+    #    background: "#5c2018"
+    #    text: "Hello Anna"
+
+    attentive:
+      background: "#0b3d2e"
+      text: "I see you"
+      subtext: "look away to reset"
+      text_color: "#e8fff4"
+      subtext_color: "#7fd7b4"
+      image: null
+      image_fit: cover
+      font_scale: 0.16
+      subtext_scale: 0.045
+
+updates:
+  # Ask the git remote whether a newer version exists, in the background.
+  # Shown under "Update" in the menu (m). Never installs anything by itself.
+  check_on_start: true
+
+hooks:
+  # Shell commands fired on state changes. Useful when the Pi drives something
+  # other than this window (relay, kiosk browser, video player, MQTT, ...).
+  on_attentive: null       # e.g. "mpv --fs /home/pi/clip.mp4"
+  on_idle: null
+  debounce_seconds: 2.0

@@ -1,0 +1,23 @@
+# Autostart on a Raspberry Pi. Adjust User/paths, then:
+#   sudo cp scripts/lookat.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now lookat
+[Unit]
+Description=lookat - webcam attention display
+After=graphical.target
+Wants=graphical.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/lookat
+# On a desktop session (Wayland/X11) keep DISPLAY; on a bare console,
+# comment DISPLAY out and uncomment SDL_VIDEODRIVER=kmsdrm instead.
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/pi/.Xauthority
+#Environment=SDL_VIDEODRIVER=kmsdrm
+ExecStart=/home/pi/lookat/.venv/bin/python /home/pi/lookat/run.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target

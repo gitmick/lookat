@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lookat"
+dynamic = ["version"]
+description = "Webcam attention detection: the screen reacts when someone looks at it"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+dependencies = [
+    "numpy>=1.24",
+    "pygame>=2.5",
+    "PyYAML>=6.0",
+
+    # MediaPipe stopped shipping Intel-macOS wheels after 0.10.21, so an
+    # Intel Mac has to stay on that release. Everywhere else, take the latest.
+    "mediapipe>=0.10.9; sys_platform != 'darwin'",
+    "mediapipe>=0.10.9; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "mediapipe==0.10.21; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+]
+
+[project.scripts]
+lookat = "lookat.app:main"
+
+[tool.setuptools]
+packages = ["lookat"]
+
+[tool.setuptools.dynamic]
+version = { attr = "lookat.__version__" }
+
+[tool.setuptools.package-data]
+lookat = ["config.default.yaml"]

@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+.venv/
+
+# models are downloaded on first use
+models/*.task
+models/*.onnx
+
+# local tuning and captures
+calibration.yaml
+snapshot*.png
+
+# enrolled faces are biometric data -- keep them out of version control
+people.json
+
+# the user's own config lives outside the checkout on a fresh install;
+# this covers an in-place setup like the original Windows one
+config.yaml
