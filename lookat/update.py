@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -12,9 +13,30 @@ from .paths import checkout_dir, git_describe
 log = logging.getLogger(__name__)
 
 
+AUTH_MARKERS = ("could not read Username", "Authentication failed", "Permission denied",
+                "publickey", "terminal prompts disabled", "403")
+
+AUTH_HELP = (
+    "\nThe repository is private, so this machine needs access to it. Either:"
+    "\n  gh auth login                      (then: gh auth setup-git)"
+    "\nor switch the remote to SSH and add a key to your GitHub account:"
+    "\n  git remote set-url origin git@github.com:gitmick/lookat.git"
+)
+
+
 def _git(repo: Path, *args: str, timeout: int = 120) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", "-C", str(repo), *args],
+    env = dict(os.environ, GIT_TERMINAL_PROMPT="0")
+    return subprocess.run(["git", "-C", str(repo), *args], env=env,
                           capture_output=True, text=True, timeout=timeout, check=False)
+
+
+def _last_line(proc: subprocess.CompletedProcess) -> str:
+    text = (proc.stderr or proc.stdout or "").strip().splitlines()
+    return text[-1].strip() if text else "unknown error"
+
+
+def _with_auth_hint(message: str) -> str:
+    return message + AUTH_HELP if any(m in message for m in AUTH_MARKERS) else message
 
 
 def check_for_update(repo: Path | None = None) -> tuple[bool, str]:
@@ -25,7 +47,7 @@ def check_for_update(repo: Path | None = None) -> tuple[bool, str]:
 
     fetch = _git(repo, "fetch", "--quiet")
     if fetch.returncode != 0:
-        return False, f"could not reach the remote: {fetch.stderr.strip().splitlines()[-1:] or ''}"
+        return False, _with_auth_hint(f"could not reach the remote: {_last_line(fetch)}")
 
     counts = _git(repo, "rev-list", "--left-right", "--count", "HEAD...@{u}")
     if counts.returncode != 0:
@@ -56,8 +78,7 @@ def apply_update(repo: Path | None = None, reinstall: bool = True) -> tuple[bool
     before = git_describe(repo)
     pull = _git(repo, "pull", "--ff-only")
     if pull.returncode != 0:
-        detail = (pull.stderr or pull.stdout).strip().splitlines()
-        return False, f"git pull failed: {detail[-1] if detail else 'unknown error'}"
+        return False, _with_auth_hint(f"git pull failed: {_last_line(pull)}")
 
     after = git_describe(repo)
     if before == after:
@@ -69,7 +90,7 @@ def apply_update(repo: Path | None = None, reinstall: bool = True) -> tuple[bool
             capture_output=True, text=True, timeout=900, check=False,
         )
         if install.returncode != 0:
-            tail = (install.stderr or "").strip().splitlines()[-1:] 
-            return False, f"updated to {after} but dependencies failed: {tail}"
+            return False, (f"updated to {after}, but installing dependencies failed: "
+                           f"{_last_line(install)}")
 
     return True, f"updated {before} -> {after}; restart lookat to use it"
