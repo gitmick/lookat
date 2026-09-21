@@ -157,7 +157,7 @@ file or the command line:
  lookat  -  settings
 
    Calibrate gaze                              +29 / +2
-   Learn a new person                     anna, michael
+   Learn a new person                     anna, ben
    Remove a person                                    2
    Face recognition                                  on
    Camera                                      device 0

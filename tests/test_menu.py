@@ -116,10 +116,10 @@ def test_empty_name_is_not_submitted():
 def test_choice_picker():
     picked = []
     menu = _menu([])
-    menu.choose("Remove which person?", ["anna", "michael"], picked.append)
+    menu.choose("Remove which person?", ["anna", "ben"], picked.append)
     menu.handle(FakeKey(PG.K_DOWN), PG)
     menu.handle(FakeKey(PG.K_RETURN), PG)
-    assert picked == ["michael"]
+    assert picked == ["ben"]
     assert menu.choices is None, "picker must close after choosing"
 
     # the picker must swallow keys, not move the main list underneath
@@ -128,7 +128,7 @@ def test_choice_picker():
     menu.handle(FakeKey(PG.K_DOWN), PG)
     menu.handle(FakeKey(PG.K_ESCAPE), PG)
     assert menu.choices is None and menu.index == before
-    assert picked == ["michael"], "escape must not pick anything"
+    assert picked == ["ben"], "escape must not pick anything"
 
 
 def test_choice_handler_errors_are_contained():
@@ -153,7 +153,7 @@ def test_removal_is_queued_and_applied_by_the_worker():
     db_path = os.path.join(tempfile.mkdtemp(), "people.json")
     db = PeopleDatabase(db_path)
     db.add("anna", [np.ones((1, 128), dtype=np.float32)])
-    db.add("michael", [np.zeros((1, 128), dtype=np.float32)])
+    db.add("ben", [np.zeros((1, 128), dtype=np.float32)])
     db.save()
 
     cfg = load_config(overrides=[f"identity.database={db_path}", "identity.enabled=true"])
@@ -173,7 +173,7 @@ def test_removal_is_queued_and_applied_by_the_worker():
     worker._process_removals()
 
     assert "anna" not in worker.identifier.db.people
-    assert "michael" in worker.identifier.db.people
+    assert "ben" in worker.identifier.db.people
     assert "anna" not in PeopleDatabase(db_path).people, "not persisted"
 
     menu = Menu()
@@ -206,7 +206,7 @@ def test_broken_value_accessor_does_not_crash_drawing():
         menu.text = "anna"
         assert display.update("idle", AttentionState()) is True
         menu.cancel_prompt()
-        menu.choose("Remove which person?", ["anna", "michael"], lambda n: None)
+        menu.choose("Remove which person?", ["anna", "ben"], lambda n: None)
         assert display.update("idle", AttentionState()) is True
     finally:
         display.close()
