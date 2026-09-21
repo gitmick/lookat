@@ -76,6 +76,36 @@ def resolve_config(explicit: str | None = None) -> tuple[Path, bool]:
     return target, False
 
 
+IMAGES_README = """Pictures shown full screen by lookat.
+
+Set  display.mode: images  in config.yaml, or press m in the window and
+switch "Screen mode" to images.
+
+File names (any of .png .jpg .jpeg .webp .bmp):
+
+  idle.jpg          shown when nobody is looking at the screen
+  attentive.jpg     shown when someone is looking
+  person-anna.jpg   optional: shown when "anna" is recognised
+                    (falls back to attentive.jpg if missing)
+
+Pictures are scaled to fill the screen. Set display.images.fit to "contain"
+if you would rather see all of the picture with bars at the sides.
+"""
+
+
+def ensure_data_scaffold(config_path: Path) -> Path:
+    """Make sure the images folder next to the config exists and is explained."""
+    folder = config_path.parent / "images"
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+        readme = folder / "README.txt"
+        if not readme.exists():
+            readme.write_text(IMAGES_README, encoding="utf-8")
+    except OSError as exc:
+        log.warning("could not create %s: %s", folder, exc)
+    return folder
+
+
 def git_describe(repo: Path | None = None) -> str:
     """Short commit of the checkout, or '' when not running from git."""
     repo = repo or checkout_dir()
@@ -99,6 +129,7 @@ def describe_paths(config_path: Path) -> str:
         f"python       {sys.version.split()[0]}  ({sys.executable})",
         f"config       {config_path}",
         f"data dir     {config_path.parent}",
+        f"images       {config_path.parent / 'images'}",
         f"checkout     {checkout_dir() or '(installed, not a git clone)'}",
     ]
     return "\n".join(lines)

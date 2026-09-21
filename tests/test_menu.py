@@ -212,6 +212,66 @@ def test_broken_value_accessor_does_not_crash_drawing():
         display.close()
 
 
+def _make_image(path, colour=(20, 120, 200), size=(64, 48)):
+    import pygame
+
+    pygame.init()
+    surface = pygame.Surface(size)
+    surface.fill(colour)
+    pygame.image.save(surface, str(path))
+
+
+def test_image_lookup_and_person_fallback():
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    from lookat.display import build_display
+
+    folder = tempfile.mkdtemp()
+    cfg = load_config(overrides=["display.fullscreen=false", "display.window_size=[320,240]",
+                                 "display.mode=images", f"display.images.folder={folder}"])
+    display = build_display(cfg)
+    try:
+        assert display.mode == "images"
+        assert display.image_for("idle") is None, "nothing there yet"
+
+        _make_image(os.path.join(folder, "idle.jpg"))
+        _make_image(os.path.join(folder, "attentive.png"))
+        assert str(display.image_for("idle")).endswith("idle.jpg")
+        assert str(display.image_for("attentive")).endswith("attentive.png")
+
+        # a person with no picture of their own falls back to `attentive`
+        assert str(display.image_for("person.bob")).endswith("attentive.png")
+        _make_image(os.path.join(folder, "person-bob.webp"))
+        assert str(display.image_for("person-bob".replace("-", "."))).endswith("person-bob.webp")
+    finally:
+        display.close()
+
+
+def test_images_mode_renders_and_falls_back_to_a_placeholder():
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    from lookat.attention import AttentionState
+    from lookat.display import build_display
+
+    folder = tempfile.mkdtemp()
+    _make_image(os.path.join(folder, "idle.jpg"))
+    cfg = load_config(overrides=["display.fullscreen=false", "display.window_size=[320,240]",
+                                 "display.mode=images", f"display.images.folder={folder}"])
+    display = build_display(cfg)
+    try:
+        state = AttentionState()
+        assert display.update("idle", state) is True
+        # `attentive` has no file -- must render a placeholder, not raise
+        assert display.update("attentive", state) is True
+
+        # switching back to text must work at runtime
+        display.set_mode("text")
+        assert display.mode == "text" and cfg.get("display.mode") == "text"
+        assert display.update("attentive", state) is True
+        display.set_mode("images")
+        assert display.update("idle", state) is True
+    finally:
+        display.close()
+
+
 def test_patch_yaml_keeps_comments():
     path = os.path.join(tempfile.mkdtemp(), "c.yaml")
     with open(path, "w", encoding="utf-8") as handle:

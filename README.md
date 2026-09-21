@@ -49,6 +49,58 @@ If it installs Python, close and reopen PowerShell and run it once more. Then:
 Press **m** for the settings menu, **d** for the debug overlay, **f** to
 toggle fullscreen, **q** or **Esc** to quit.
 
+## Quick start on a Mac
+
+Apple Silicon is the smooth path. On an Intel Mac see the note below.
+
+```bash
+git clone https://github.com/gitmick/lookat.git ~/lookat
+cd ~/lookat
+./scripts/install_mac.sh
+```
+
+The script finds or installs Python 3.10+, builds a `.venv`, installs the
+package, puts a `lookat` launcher in `~/.local/bin`, and downloads the face
+model. Then:
+
+```bash
+lookat --version              # where config, images and data live
+lookat --windowed --debug     # check it sees you
+lookat                        # fullscreen, for real
+```
+
+**macOS will ask for camera permission the first time.** If you are never
+asked, or the picture is black, enable your terminal under *System Settings >
+Privacy & Security > Camera*. A denied camera looks exactly like a missing
+one, so lookat prints that hint when it gets no frames.
+
+**Intel Macs:** MediaPipe stopped publishing Intel wheels after 0.10.21, so
+`pyproject.toml` pins that release on `x86_64` Darwin. It works, but it is an
+older engine than Apple Silicon gets, and OpenCV needs macOS 14+.
+
+### Updating
+
+```bash
+lookat --check-update     # is there anything new?
+lookat --update           # pull it and reinstall
+```
+
+or press **m** and choose **Update**. It checks in the background at startup
+and shows what it found in the menu.
+
+The repository is private, so the Mac needs access to it. Easiest:
+
+```bash
+gh auth login && gh auth setup-git
+```
+
+or use SSH: `git remote set-url origin git@github.com:gitmick/lookat.git` and
+add that Mac's public key to the GitHub account.
+
+Updates can never clobber local work: your config, calibration, pictures and
+enrolled faces all live **outside** the checkout (see `lookat --version`), and
+`--update` refuses to run if the checkout has uncommitted changes.
+
 ## Quick start on a Raspberry Pi
 
 Pi 4 or Pi 5, 64-bit Raspberry Pi OS (Bookworm). USB webcam or CSI camera
@@ -79,6 +131,22 @@ python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
 ./.venv/bin/python run.py --windowed --debug
 ```
 
+## Where your data lives
+
+Nothing personal is kept in the checkout, so updates are always safe:
+
+```
+lookat --version
+```
+
+prints the config file, the images folder and the data directory. On a fresh
+install that is `~/Library/Application Support/lookat` on macOS,
+`%APPDATA%\lookat` on Windows and `~/.config/lookat` on Linux. If a
+`config.yaml` already sits next to the code in a git clone, that one wins, so
+an existing setup keeps working untouched.
+
+`people.json` holds enrolled faces and is never committed.
+
 ## The menu
 
 Press **m** while it is running. Up/Down to move, Enter to act, Esc to close.
@@ -90,10 +158,13 @@ file or the command line:
 
    Calibrate gaze                              +29 / +2
    Learn a new person                     anna, michael
+   Remove a person                                    2
    Face recognition                                  on
    Camera                                      device 0
+   Screen mode                                   images
    Fullscreen                                       off
    Save settings
+   Update                                    up to date
    Quit
 ```
 
@@ -102,8 +173,13 @@ file or the command line:
 - **Learn a new person** — type a name, then look at the camera for 10
   seconds. The person is saved *and* given a screen of their own straight
   away, so you can see it working without editing anything.
+- **Remove a person** — pick from a list, confirm, and their face data is
+  deleted from `people.json` immediately. You pick from a list rather than
+  typing, so a typo cannot delete the wrong person.
 - **Camera** — scans for cameras in the background and cycles through the ones
   that work. Reverts if the new one will not open.
+- **Screen mode** — switch between the text screens and your pictures.
+- **Update** — pull the newest version and reinstall.
 - **Fullscreen** — toggles, and tells you if the display refuses.
 - **Save settings** — writes camera, fullscreen, recognition and the
   calibration into `config.yaml`, keeping your comments.
@@ -111,6 +187,33 @@ file or the command line:
 Calibration and enrolment run on the camera that is *already open* — most
 webcams cannot be opened twice, so they could not work any other way. Changes
 apply live; only **Save settings** makes them permanent.
+
+## Two screen modes: text and pictures
+
+`display.mode` decides what is drawn. Toggle it live from the menu under
+**Screen mode**.
+
+- **`text`** — the built-in coloured screens with a headline. Good for
+  setting up and testing, because it shows at a glance which state you are in.
+- **`images`** — your own pictures, full screen, nothing else.
+
+Pictures go in the images folder (`lookat --version` prints the path; it is
+created for you with a README inside). Files are found by name, in any of
+`.png .jpg .jpeg .webp .bmp`:
+
+```
+images/
+  idle.jpg          shown when nobody is looking
+  attentive.jpg     shown when someone is looking
+  person-anna.jpg   optional: shown when "anna" is recognised
+```
+
+A recognised person with no picture of their own falls back to
+`attentive`. If a picture is missing entirely, the screen says so and names
+the file it wanted rather than failing silently.
+
+`display.images.fit` is `cover` (fill the screen, cropping if the aspect
+ratio differs) or `contain` (show all of the picture, with bars).
 
 ## Changing what is shown
 
@@ -374,6 +477,8 @@ lookat/
   overlay.py            debug drawing
   hooks.py              shell commands on state change
   menu.py               the on-screen settings menu
+  paths.py              where config, pictures and face data live
+  update.py             `--update` / the Update menu entry
   identity.py           face recognition (SFace) and the people database
   enroll.py             --enroll / --people / --forget
   calibrate.py          interactive and automatic tuning
@@ -418,5 +523,3 @@ file as personal data rather than as a hash.
 The MediaPipe face landmark model is downloaded at setup time from Google's
 model store (Apache 2.0). The Haar cascades, if the fallback is used, come from
 the OpenCV repository (BSD).
-
-# (update mechanism test)

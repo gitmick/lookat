@@ -66,6 +66,11 @@ DEFAULTS: Dict[str, Any] = {
     },
     "display": {
         "backend": "pygame",
+        "mode": "text",              # text | images
+        "images": {
+            "folder": "images",
+            "fit": "cover",
+        },
         "fullscreen": True,
         "window_size": [1280, 720],
         "hide_cursor": True,

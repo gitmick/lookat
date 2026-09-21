@@ -16,3 +16,5 @@ people.json
 # the user's own config lives outside the checkout on a fresh install;
 # this covers an in-place setup like the original Windows one
 config.yaml
+images/
+!images/README.txt

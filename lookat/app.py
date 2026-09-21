@@ -443,6 +443,20 @@ def build_menu(cfg, display, camera, worker, config_path, stop):
         else:
             menu.set_status(f"Camera {nxt} would not open, kept {camera.device}", "bad")
 
+    def do_toggle_mode():
+        new_mode = "text" if getattr(display, "mode", "text") == "images" else "images"
+        display.set_mode(new_mode)
+        if new_mode == "images":
+            folder = display.images_folder()
+            missing = [s for s in ("idle", "attentive") if display.image_for(s) is None]
+            if missing:
+                menu.set_status(
+                    f"Images mode: no {' or '.join(missing)} picture in {folder}", "bad")
+            else:
+                menu.set_status(f"Showing pictures from {folder}", "ok")
+        else:
+            menu.set_status("Showing the built-in text screens", "ok")
+
     def do_toggle_fullscreen():
         if display.set_fullscreen(not display.fullscreen):
             menu.set_status(f"Fullscreen {'on' if display.fullscreen else 'off'}", "ok")
@@ -484,6 +498,7 @@ def build_menu(cfg, display, camera, worker, config_path, stop):
         values = {
             "device": cfg.get("camera.device"),
             "fullscreen": str(bool(cfg.get("display.fullscreen"))).lower(),
+            "mode": cfg.get("display.mode", "text"),
             "enabled": str(bool(cfg.get("identity.enabled"))).lower(),
             "yaw_offset_deg": cfg.get("gaze.yaw_offset_deg"),
             "pitch_offset_deg": cfg.get("gaze.pitch_offset_deg"),
@@ -528,6 +543,9 @@ def build_menu(cfg, display, camera, worker, config_path, stop):
                  lambda: ("scanning..." if cameras["scanning"]
                           else f"device {camera.device}"),
                  "Switch to the next camera that works."),
+        MenuItem("Screen mode", do_toggle_mode,
+                 lambda: getattr(display, "mode", "text"),
+                 "text = the built-in screens (testing), images = your pictures."),
         MenuItem("Fullscreen", do_toggle_fullscreen,
                  lambda: "on" if display.fullscreen else "off"),
         MenuItem("Save settings", do_save, lambda: "",
@@ -761,7 +779,7 @@ def main(argv=None) -> int:
         datefmt="%H:%M:%S",
     )
 
-    from .paths import describe_paths, resolve_config
+    from .paths import describe_paths, ensure_data_scaffold, resolve_config
 
     if args.update or args.check_update:
         from .update import apply_update, check_for_update
@@ -780,6 +798,8 @@ def main(argv=None) -> int:
     if created:
         print(f"created a fresh config at {resolved}")
     config_path = str(resolved) if resolved.exists() else None
+    if config_path is not None:
+        ensure_data_scaffold(resolved)
     if config_path is None:
         log.warning("config %s not found, using built-in defaults", resolved)
 

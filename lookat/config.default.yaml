@@ -70,6 +70,19 @@ attention:
 
 display:
   backend: pygame          # pygame | none
+
+  # "text"   - the built-in coloured text screens below. Good for testing.
+  # "images" - show full-screen pictures from the images folder instead.
+  # Switch it live from the menu (m).
+  mode: text
+  images:
+    folder: images         # relative to this config file
+    fit: cover             # cover = fill the screen (may crop)
+                           # contain = show all of it (may letterbox)
+    # Files are looked up by name, any of .png .jpg .jpeg .webp .bmp:
+    #   idle.jpg          shown when nobody is looking
+    #   attentive.jpg     shown when someone is looking
+    #   person-anna.jpg   optional, shown when anna is recognised
   fullscreen: true
   window_size: [1280, 720]
   hide_cursor: true

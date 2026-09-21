@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -62,6 +63,7 @@ class PygameDisplay:
         self.fade = max(0.01, float(cfg.get("display.fade_seconds", 0.35)))
         self.debug = bool(cfg.get("display.debug_overlay", False))
         self.font_path = cfg.path(cfg.get("display.font_path"))
+        self.mode = str(cfg.get("display.mode", "text")).lower()
 
         # Crossfade state: `_shown` is fully visible, `_incoming` fades in
         # over it. Scene names are "idle", "attentive" or "person.<name>".
@@ -94,6 +96,42 @@ class PygameDisplay:
             lines.append(current)
         return lines
 
+    IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".bmp")
+
+    def images_folder(self) -> Path:
+        return Path(self.cfg.path(self.cfg.get("display.images.folder", "images")))
+
+    def _image_basename(self, scene: str) -> str:
+        """idle -> "idle";  person.anna -> "person-anna"."""
+        return scene.replace(".", "-")
+
+    def image_for(self, scene: str) -> Optional[Path]:
+        """The picture for a scene, or None. A person with no picture of
+        their own falls back to the generic `attentive` one."""
+        folder = self.images_folder()
+        candidates = [self._image_basename(scene)]
+        if scene.startswith("person."):
+            candidates.append("attentive")
+        for base in candidates:
+            for suffix in self.IMAGE_SUFFIXES:
+                path = folder / f"{base}{suffix}"
+                if path.exists():
+                    return path
+        return None
+
+    def _missing_image_spec(self, scene: str) -> dict:
+        wanted = f"{self._image_basename(scene)}.jpg"
+        return {
+            "background": "#1b1418",
+            "text": "no picture",
+            "subtext": f"put one at  {self.images_folder() / wanted}",
+            "text_color": "#8c7a82",
+            "subtext_color": "#5d5057",
+            "font_scale": 0.10,
+            "subtext_scale": 0.032,
+            "image": None,
+        }
+
     def _scene_spec(self, name: str) -> dict:
         """A per-person scene inherits from `attentive` for anything it omits,
         so you only have to write the parts that differ."""
@@ -109,12 +147,21 @@ class PygameDisplay:
 
     def _render_scene(self, name: str):
         pygame = self.pygame
-        spec = self._scene_spec(name)
+        if self.mode == "images":
+            picture = self.image_for(name)
+            spec = ({"background": "#000000", "image": str(picture),
+                     "image_fit": self.cfg.get("display.images.fit", "cover"),
+                     "text": "", "subtext": ""}
+                    if picture else self._missing_image_spec(name))
+        else:
+            spec = self._scene_spec(name)
         width, height = self.screen.get_size()
         surface = pygame.Surface((width, height)).convert()
         surface.fill(parse_colour(spec.get("background"), (0, 0, 0)))
 
-        image_path = self.cfg.path(spec.get("image"))
+        image_path = spec.get("image")
+        if image_path and not os.path.isabs(image_path):
+            image_path = self.cfg.path(image_path)
         if image_path:
             if os.path.exists(image_path):
                 try:
@@ -191,6 +238,11 @@ class PygameDisplay:
             except pygame.error as exc:
                 log.warning("set_mode(%s, %s) failed: %s", size, flags, exc)
         return False
+
+    def set_mode(self, mode: str) -> None:
+        self.mode = mode
+        self.cfg.set("display.mode", mode)
+        self.reload_scenes()
 
     def set_fullscreen(self, value: bool) -> bool:
         """Switch between fullscreen and windowed. Returns False (and stays
