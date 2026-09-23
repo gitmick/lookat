@@ -1,0 +1,2 @@
+[console_scripts]
+lookat = lookat.app:main

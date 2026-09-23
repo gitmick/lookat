@@ -1,3 +1,41 @@
+Metadata-Version: 2.4
+Name: lookat
+Version: 1.1.0
+Summary: Webcam attention detection: the screen reacts when someone looks at it
+License: MIT License
+        
+        Copyright (c) 2026 Michael Hackl
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OF OR OTHER DEALINGS IN
+        THE SOFTWARE.
+        
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy<2,>=1.24; sys_platform == "darwin" and platform_machine == "x86_64"
+Requires-Dist: numpy>=1.24; sys_platform != "darwin" or platform_machine != "x86_64"
+Requires-Dist: pygame>=2.5
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: mediapipe>=0.10.9; sys_platform != "darwin"
+Requires-Dist: mediapipe>=0.10.9; sys_platform == "darwin" and platform_machine == "arm64"
+Requires-Dist: mediapipe==0.10.21; sys_platform == "darwin" and platform_machine == "x86_64"
+Dynamic: license-file
+
 # lookat
 
 Webcam attention detection. The screen shows one thing when nobody is looking
@@ -51,7 +89,7 @@ toggle fullscreen, **q** or **Esc** to quit.
 
 ## Quick start on a Mac
 
-Both Apple Silicon and Intel work. The install script picks the right stack.
+Apple Silicon is the smooth path. On an Intel Mac see the note below.
 
 ```bash
 git clone https://github.com/gitmick/lookat.git ~/lookat
@@ -74,35 +112,9 @@ asked, or the picture is black, enable your terminal under *System Settings >
 Privacy & Security > Camera*. A denied camera looks exactly like a missing
 one, so lookat prints that hint when it gets no frames.
 
-### Intel Macs
-
-MediaPipe stopped publishing Intel wheels after 0.10.21, so `pyproject.toml`
-pins that release on `x86_64` Darwin and pulls the matching older libraries.
-The two stacks that actually get installed:
-
-| | Apple Silicon | Intel |
-| --- | --- | --- |
-| mediapipe | 1.0.1 | 0.10.21 |
-| numpy | 2.x | 1.26 (0.10.21 requires numpy&nbsp;<2) |
-| opencv-contrib-python | 5.0 | 4.11 (4.10 on macOS&nbsp;12) |
-| Python | 3.10+ | **3.10 – 3.12 only** |
-
-**Python 3.13 or newer will not work on an Intel Mac** — there is no wheel,
-and pip's error is misleading. The install script checks the version first
-and says so plainly.
-
-Everything was verified against the Intel stack: the whole test suite passes
-on mediapipe 0.10.21 / OpenCV 4.11 / numpy 1.26, and recognition scores come
-out the same (0.99 for the right person, 0.07-0.09 for the wrong one). The
-dependency tree resolves to real wheels on macOS 12, 13 and 14.
-
-Measured on one and the same CPU, so this is the library difference rather
-than Mac hardware: the older stack needs 15.3 ms per frame for landmarks and
-pose against 14.4 ms, and 16.2 ms against 14.1 ms for recognition. Perfectly
-comfortable at the default 12 detections per second.
-
-Two incidental wins on Intel: OpenCV 4.x still bundles the Haar cascades, so
-the no-MediaPipe fallback works without downloading anything.
+**Intel Macs:** MediaPipe stopped publishing Intel wheels after 0.10.21, so
+`pyproject.toml` pins that release on `x86_64` Darwin. It works, but it is an
+older engine than Apple Silicon gets, and OpenCV needs macOS 14+.
 
 ### Updating
 
@@ -429,7 +441,6 @@ regardless.
 | Machine | ms/frame | Practical detection rate |
 | --- | --- | --- |
 | x86-64 laptop CPU | ~14 | 12 fps at ~15% of one core |
-| same CPU, Intel stack (mediapipe 0.10.21) | ~15 | ~6% slower for landmarks, ~15% for recognition |
 | Raspberry Pi 5 | ~25–40 | 12 fps comfortably |
 | Raspberry Pi 4 | ~60–90 | set `detection_fps: 8` and `camera.width: 480` |
 | Raspberry Pi Zero 2 W | very slow | use `detector.backend: haar`, expect presence-only |

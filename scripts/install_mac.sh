@@ -16,30 +16,44 @@ die()  { printf '\033[31mxx\033[0m %s\n' "$*" >&2; exit 1; }
 ARCH="$(uname -m)"
 say "macOS $(sw_vers -productVersion 2>/dev/null || echo '?') on ${ARCH}"
 
+# MediaPipe publishes a version-independent wheel for Apple Silicon, but only
+# cp39-cp312 wheels for Intel, and none at all after 0.10.21. So an Intel Mac
+# needs Python 3.10-3.12; anything newer has no wheel to install.
+MAX_MINOR=99
 if [ "$ARCH" = "x86_64" ]; then
+    MAX_MINOR=12
     warn "Intel Mac: MediaPipe stopped shipping Intel wheels after 0.10.21,"
-    warn "so this pins that older release. It works, but it is not the"
-    warn "version used on Apple Silicon. macOS 14+ is required for OpenCV."
+    warn "so this installs that release (with numpy 1.x and OpenCV 4.x)."
+    warn "It needs Python 3.10-3.12 -- 3.13 and newer have no Intel wheel."
 fi
 
 # --- Python ---------------------------------------------------------------
 PY=""
-for candidate in python3.12 python3.11 python3.13 python3; do
-    if command -v "$candidate" >/dev/null 2>&1; then
-        version="$("$candidate" -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null || echo 0.0)"
-        major="${version%%.*}"; minor="${version##*.}"
-        if [ "$major" = "3" ] && [ "$minor" -ge 10 ] 2>/dev/null; then PY="$candidate"; break; fi
+REJECTED=""
+for candidate in python3.12 python3.11 python3.10 python3.13 python3; do
+    command -v "$candidate" >/dev/null 2>&1 || continue
+    version="$("$candidate" -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null || echo 0.0)"
+    major="${version%%.*}"; minor="${version##*.}"
+    [ "$major" = "3" ] || continue
+    if [ "$minor" -lt 10 ] 2>/dev/null; then continue; fi
+    if [ "$minor" -gt "$MAX_MINOR" ] 2>/dev/null; then
+        REJECTED="$REJECTED $candidate($version)"
+        continue
     fi
+    PY="$candidate"
+    break
 done
 
 if [ -z "$PY" ]; then
-    warn "No Python 3.10+ found."
+    [ -n "$REJECTED" ] && warn "Too new for an Intel Mac:$REJECTED"
+    warn "No usable Python found (need 3.10-$([ "$MAX_MINOR" = 99 ] && echo "newer" || echo "3.$MAX_MINOR"))."
     if command -v brew >/dev/null 2>&1; then
-        say "Installing Python via Homebrew..."
+        say "Installing Python 3.12 via Homebrew..."
         brew install python@3.12
-        PY=python3.12
+        PY="$(brew --prefix)/opt/python@3.12/bin/python3.12"
+        [ -x "$PY" ] || PY=python3.12
     else
-        die "Install Homebrew (https://brew.sh) then re-run, or get Python from python.org"
+        die "Install Homebrew (https://brew.sh) then re-run, or get Python 3.12 from python.org"
     fi
 fi
 say "Using $PY ($("$PY" --version))"
