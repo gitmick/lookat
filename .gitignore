@@ -18,3 +18,8 @@ people.json
 config.yaml
 images/
 !images/README.txt
+
+# setuptools build metadata
+*.egg-info/
+build/
+dist/
